@@ -1,19 +1,3 @@
-"""
-Hangman - Pygame Edition
-從原本 console 版改寫，保留所有玩法：
-  - 兩種類別（Animals / Countries）
-  - 三種難度（依單字長度過濾）
-  - 開局亮出母音
-  - 提示功能（會消耗一次失誤）
-  - 計時
-  - 11 階段吊人圖（用 pygame primitives 畫）
-
-操作：
-  - 直接打鍵盤 A-Z 猜字母，或滑鼠點下方按鈕
-  - 按 ? 或點 Hint 鈕使用提示
-  - ESC 回主選單
-"""
-
 import pygame # 記得安裝> pip install pygame
 import random
 import sys
@@ -21,11 +5,9 @@ import time
 
 pygame.init()
 
-# ============ 基本設定 ============
 WIDTH, HEIGHT = 900, 680
 FPS = 60
 
-# 配色（取代原本的 ANSI 代碼）
 BG          = (28, 32, 44)
 PANEL       = (40, 46, 62)
 PANEL_LIGHT = (54, 60, 78)
@@ -38,7 +20,7 @@ ACCENT      = (110, 180, 230)
 ACCENT_HOVER= (140, 200, 240)
 
 VOWELS = set('AEIOU')
-MAX_MISSES = 10  # 失誤達 10 次（第 11 階段）即輸
+MAX_MISSES = 10 
 
 WORD_CATEGORIES = {
     'Animals': (
@@ -70,7 +52,6 @@ font_word  = pygame.font.SysFont('couriernew', 40, bold=True)
 font_btn   = pygame.font.SysFont('arial', 22, bold=True)
 
 
-# ============ Button 元件 ============
 class Button:
     def __init__(self, rect, text, callback, *, color=ACCENT, text_color=FG, font=None):
         self.rect = pygame.Rect(rect)
@@ -89,7 +70,6 @@ class Button:
             color = ACCENT_HOVER if (hovered and self.color == ACCENT) else self.color
             tc = self.text_color
             if hovered and self.color != ACCENT:
-                # 一般淡淡的 hover 效果：稍微提亮
                 color = tuple(min(255, c + 20) for c in self.color)
         pygame.draw.rect(surface, color, self.rect, border_radius=8)
         pygame.draw.rect(surface, PANEL_LIGHT, self.rect, width=2, border_radius=8)
@@ -103,59 +83,55 @@ class Button:
         return False
 
 
-# ============ 吊人圖繪製 ============
 def draw_hangman(surface, stage):
-    """根據 stage (0~10) 在左半部畫出吊人圖。"""
-    ox, oy = 80, 480  # 底座左端基準點
+    ox, oy = 80, 480 
     color = FG
     w = 4
 
-    # 永遠存在：底座 + 立柱 + 橫樑 + 繩
-    pygame.draw.line(surface, color, (ox, oy), (ox + 200, oy), w)                       # 地面
-    pygame.draw.line(surface, color, (ox + 40, oy), (ox + 40, oy - 340), w)             # 立柱
-    pygame.draw.line(surface, color, (ox + 40, oy - 340), (ox + 180, oy - 340), w)      # 橫樑
-    pygame.draw.line(surface, color, (ox + 180, oy - 340), (ox + 180, oy - 300), w)     # 繩
+    # 架子
+    pygame.draw.line(surface, color, (ox, oy), (ox + 200, oy), w)                    
+    pygame.draw.line(surface, color, (ox + 40, oy), (ox + 40, oy - 340), w)             
+    pygame.draw.line(surface, color, (ox + 40, oy - 340), (ox + 180, oy - 340), w)    
+    pygame.draw.line(surface, color, (ox + 180, oy - 340), (ox + 180, oy - 300), w)   
 
     body_top = (ox + 180, oy - 240)
     body_bot = (ox + 180, oy - 140)
 
-    if stage >= 1:  # 頭
+    if stage >= 1:
         pygame.draw.circle(surface, color, (ox + 180, oy - 270), 30, w)
-    if stage >= 2:  # 身體
+    if stage >= 2:
         pygame.draw.line(surface, color, body_top, body_bot, w)
-    if stage >= 3:  # 左手
+    if stage >= 3: 
         pygame.draw.line(surface, color, (ox + 180, oy - 220), (ox + 135, oy - 185), w)
-    if stage >= 4:  # 右手
+    if stage >= 4: 
         pygame.draw.line(surface, color, (ox + 180, oy - 220), (ox + 225, oy - 185), w)
-    if stage >= 5:  # 左腳
+    if stage >= 5:
         pygame.draw.line(surface, color, body_bot, (ox + 145, oy - 80), w)
-    if stage >= 6:  # 右腳
+    if stage >= 6:
         pygame.draw.line(surface, color, body_bot, (ox + 215, oy - 80), w)
-    # 7~10 是「死亡裝飾」：棺材框 + 腳下橫線（用紅色強調危險）
-    if stage >= 7:  # 左棺框 [
+    if stage >= 7:
         pygame.draw.line(surface, RED, (ox + 130, oy - 305), (ox + 130, oy - 235), w)
         pygame.draw.line(surface, RED, (ox + 130, oy - 305), (ox + 145, oy - 305), w)
         pygame.draw.line(surface, RED, (ox + 130, oy - 235), (ox + 145, oy - 235), w)
-    if stage >= 8:  # 右棺框 ]
+    if stage >= 8:
         pygame.draw.line(surface, RED, (ox + 230, oy - 305), (ox + 230, oy - 235), w)
         pygame.draw.line(surface, RED, (ox + 230, oy - 305), (ox + 215, oy - 305), w)
         pygame.draw.line(surface, RED, (ox + 230, oy - 235), (ox + 215, oy - 235), w)
-    if stage >= 9:  # 左腳底線
+    if stage >= 9: 
         pygame.draw.line(surface, RED, (ox + 125, oy - 75), (ox + 155, oy - 75), w)
-    if stage >= 10:  # 右腳底線（GAME OVER）
+    if stage >= 10:
         pygame.draw.line(surface, RED, (ox + 205, oy - 75), (ox + 235, oy - 75), w)
 
 
-# ============ 主遊戲類別 ============
 class Game:
     def __init__(self):
-        self.state = 'category'   # 'category' | 'difficulty' | 'playing' | 'win' | 'lose'
+        self.state = 'category' 
         self.category = None
         self.difficulty = None
         self.secret_word = ''
-        self.missed_letters = []   # 含 '?' 表示提示用過
+        self.missed_letters = []  
         self.correct_letters = []
-        self.guessed = set()       # 鍵盤上「已使用」的字母（含開局母音）
+        self.guessed = set()     
         self.hint_used = False
         self.start_time = 0
         self.end_time = 0
@@ -167,12 +143,10 @@ class Game:
         self.hint_button = None
         self._build_category_screen()
 
-    # ---------- flash 訊息 ----------
     def flash(self, text, seconds=1.8):
         self.message = text
         self.message_until = time.time() + seconds
 
-    # ---------- 建構各畫面按鈕 ----------
     def _clear_buttons(self):
         self.buttons = []
         self.letter_buttons = {}
@@ -227,7 +201,6 @@ class Game:
             self.buttons.append(btn)
             self.letter_buttons[ch] = btn
 
-        # 提示按鈕（右上）
         self.hint_button = Button((WIDTH - 180, 90, 140, 50), '? Hint',
                                   self.use_hint, color=YELLOW, text_color=BG)
         self.buttons.append(self.hint_button)
@@ -262,7 +235,6 @@ class Game:
         self.buttons.append(Button((x0 + bw + gap, 560, bw, bh), 'Main Menu',
                                    self._back_to_menu, color=PANEL))
 
-    # ---------- 流程 ----------
     def choose_category(self, cat):
         self.category = cat
         self.state = 'difficulty'
@@ -297,7 +269,7 @@ class Game:
         #     if ch in VOWELS:
         #         btn.enabled = False
 
-        # 極少數情況：母音直接全中 → 立刻獲勝
+        # 極少數情況：母音直接全中
         if all(l in self.correct_letters for l in self.secret_word):
             self.end_time = time.time()
             self._build_end_screen(won=True)
@@ -334,7 +306,7 @@ class Game:
         letter = random.choice(ungussed)
         self.correct_letters.append(letter)
         self.guessed.add(letter)
-        self.missed_letters.append('?')  # 代表用了一次 hint（也算一次失誤）
+        self.missed_letters.append('?')  
         self.hint_used = True
         self.flash(f'Hint: the word contains "{letter}"', 2.5)
         self._sync_letter_buttons()
@@ -349,7 +321,6 @@ class Game:
             self.end_time = time.time()
             self._build_end_screen(won=False)
 
-    # ---------- 事件 ----------
     def handle_event(self, event):
         if event.type == pygame.QUIT:
             return False
@@ -370,7 +341,6 @@ class Game:
                     break
         return True
 
-    # ---------- 繪製 ----------
     def draw(self):
         screen.fill(BG)
         if self.state == 'category':
@@ -382,7 +352,6 @@ class Game:
         else:
             self._draw_end()
 
-        # flash 訊息
         if self.message and time.time() < self.message_until:
             surf = font_body.render(self.message, True, YELLOW)
             screen.blit(surf, surf.get_rect(midbottom=(WIDTH // 2, HEIGHT - 8)))
@@ -407,16 +376,13 @@ class Game:
     def _draw_playing(self):
         draw_hangman(screen, len(self.missed_letters))
 
-        # 類別 + 計時
         cat_surf = font_h2.render(f'Category: {self.category}', True, ACCENT)
         screen.blit(cat_surf, (380, 100))
         elapsed = int(time.time() - self.start_time)
         screen.blit(font_body.render(f'Time: {elapsed}s', True, MUTED), (380, 140))
 
-        # 單字（_/字母 並排）
         self._draw_word(380, 220)
 
-        # 失誤字母
         screen.blit(font_body.render('Missed:', True, MUTED), (380, 340))
         for i, ch in enumerate(self.missed_letters):
             color = YELLOW if ch == '?' else RED
