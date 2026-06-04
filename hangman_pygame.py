@@ -41,7 +41,7 @@ WORD_CATEGORIES = {
 }
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption('Hangman - Pygame Edition')
+pygame.display.set_caption('Hangman - Pygame)
 clock = pygame.time.Clock()
 
 font_title = pygame.font.SysFont('arial', 56, bold=True)
